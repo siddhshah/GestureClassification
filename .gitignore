@@ -1,0 +1,51 @@
+# --- STM32CubeIDE / CubeMX artifacts ---
+# CubeMX workspace & user settings
+*.ioc.user
+*.ioc.backup
+# CubeMX “project” backups
+*.ioc.bak
+# Generated build outputs
+Debug/
+Release/
+# Linker/Map files, listings, binaries
+*.elf
+*.axf
+*.bin
+*.hex
+*.map
+*.list
+*.o
+*.lst
+
+# --- Eclipse / IDE metadata ---
+.metadata/
+*.launch
+.cproject
+.project
+.settings/
+# VS Code
+.vscode/
+# JetBrains
+.idea/
+
+# --- Python virtual environment & caches ---
+# Generic venv names
+venv/
+ENV/
+env/
+# If you used Scripts/venv specifically
+Scripts/venv/
+# PyCache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Model/artifact files you may not want checked in ---
+# Keras checkpoints
+*.h5
+# (Optionally) TensorFlow Lite blobs if you regenerate them
+# *.tflite
+
+# --- OS & Misc ---
+.DS_Store
+Thumbs.db
