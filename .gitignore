@@ -30,7 +30,7 @@ Release/
 
 # --- Python virtual environment & caches ---
 # Generic venv names
-venv/
+stvenv/
 ENV/
 env/
 # If you used Scripts/venv specifically
