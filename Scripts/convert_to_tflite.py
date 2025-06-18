@@ -53,7 +53,7 @@ def main():
 
     out_dir = args.output.rsplit('/', 1)[0]
     if out_dir and not tf.io.gfile.exists(out_dir):
-        tf.io.gfile.makedirs(outdir)
+        tf.io.gfile.makedirs(out_dir)
 
     with open(args.output, 'wb') as f:
         f.write(tflite_model)
