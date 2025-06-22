@@ -21,7 +21,7 @@ def parse_args():
 # Load & prep data
 def load_data(path):
     arr = np.load(path, allow_pickle=True)
-    raw_labels = arr[:,0]                  # e.g. ['wave','wave',...]
+    raw_labels = arr[:,0]
     uniques = np.unique(raw_labels)
     label_to_int = {l:i for i,l in enumerate(uniques)}
     labels = np.array([label_to_int[l] for l in raw_labels], dtype=int)
