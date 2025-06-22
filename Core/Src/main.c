@@ -18,10 +18,18 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdio.h>
+#include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+//#include "micro_mutable_op_resolver.h"
+//#include "tflite/micro_error_reporter.h"
+//#include "tflite/micro_interpreter.h"
+//#include "tflite/schema_generated.h"
 
+// Model data as a C array (generated via xxd -i)
+//#include "gesture_model_data.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,7 +39,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define ADXL345_ADDR (0x53 << 1)  // 7-bit address left-shifted for HAL
+#define REG_DATA_FORMAT 0x31
+#define REG_POWER_CTL 0x2D
+#define REG_DATAX0 0x32
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,7 +56,17 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+// TFLite Micro global variables
+//static uint8_t tensor_arena[TENSOR_ARENA_SIZE];
 
+//tflite::MicroMutableOpResolver<5> resolver;
+//static tflite::MicroInterpreter* interpreter;
+//static TfLiteTensor* input_tensor;
+//static TfLiteTensor* output_tensor;
+
+// Buffers for sensor data and pre-processing
+//static int16_t raw_buf[WINDOW_SIZE * 3];
+//static float float_buf[WINDOW_SIZE * 3];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -54,21 +75,24 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
+// TFLM interpreter
+//void setup_tflm(void);
 
+// Pre-process float buffer in place
+// DC remove, normalize
+//void preprocess_in_place(float* buf, size_t window_size);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void read_accel_window(int16_t *buf, size_t n) {
-	for(size_t i = 0; i < n; i++) {
-		uint8_t raw[6];
-		HAL_I2C_Mem_Read(&hi2c1, 0x53<<1, 0x32, 1, raw, 6, HAL_MAX_DELAY);
-		buf[3 * i] = (int16_t)(raw[1] << 8 | raw[0]);
-		buf[3 * i + 1] = (int16_t)(raw[3] << 8 | raw[2]);
-		buf[3 * i + 2] = (int16_t)(raw[5] << 8 | raw[4]);
-		HAL_Delay(10);
-	}
-}
+
+// Map model, allocate tensors, get I/O pointers
+//void setup_tflm(void) {
+//	const tflite::Model* model = tflite::GetModel(gesture_model_tflite);
+//	if(model->version() != TFLITE_SCHEMA_VERSION) while (1);
+//
+//	interpreter = new tflite::MicroInterpreter(model, resolver, tensor_arena, TENSOR_ARENA_SIZE, &micro_error_reporter);
+//}
 /* USER CODE END 0 */
 
 /**
@@ -103,22 +127,46 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  uint8_t data = 0;
 
+  // Set measurement mode
+  data = 0x08;
+  HAL_I2C_Mem_Write(&hi2c1, ADXL345_ADDR, REG_POWER_CTL, 1, &data, 1, HAL_MAX_DELAY);
+
+  // Set data format (±2g)
+  data = 0x00;
+  HAL_I2C_Mem_Write(&hi2c1, ADXL345_ADDR, REG_DATA_FORMAT, 1, &data, 1, HAL_MAX_DELAY);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint8_t devid = 0;
+  HAL_I2C_Mem_Read(&hi2c1, ADXL345_ADDR, 0x00, 1, &devid, 1, HAL_MAX_DELAY);
+  char id_msg[32];
+  snprintf(id_msg, sizeof(id_msg), "DEVID: 0x%02X\r\n", devid);
+  HAL_UART_Transmit(&huart2, (uint8_t*)id_msg, strlen(id_msg), HAL_MAX_DELAY);
+  HAL_Delay(1000); // Prevent output flooding
+
   while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  read_accel_window(window_buf, N);
-	  for(int i = 0; i < N * 3; ++i) {
-		  char num[8];
-		  int len = sprintf(num, "%d,", window_buf[i]);
-		  HAL_UART_Transmit(&huart2, (uint8_t*)num, len, HAL_MAX_DELAY);
-	  }
-	  HAL_UART_Transmit(&huart2, (uint8_t*)"\r\n", 2, HAL_MAX_DELAY);
+	  uint8_t raw[6];
+	  int16_t x, y, z;
+	  char msg[64];
+
+	  // Read 6 bytes from DATAX0
+	  HAL_I2C_Mem_Read(&hi2c1, ADXL345_ADDR, REG_DATAX0, 1, raw, 6, HAL_MAX_DELAY);
+
+	  x = (int16_t)(raw[1] << 8 | raw[0]);
+	  y = (int16_t)(raw[3] << 8 | raw[2]);
+	  z = (int16_t)(raw[5] << 8 | raw[4]);
+
+	  // Format as CSV
+	  int len = snprintf(msg, sizeof(msg), "%d,%d,%d\r\n", x, y, z);
+	  HAL_UART_Transmit(&huart2, (uint8_t*)msg, len, HAL_MAX_DELAY);
+
+	  HAL_Delay(10);  // ~100 Hz sampling
   }
   /* USER CODE END 3 */
 }

@@ -21,6 +21,15 @@ def collect_data(port, baudrate, window_size, sample_rate, reps, out_csv):
         for rep in range(reps):
             gesture = input(f"[{rep+1}/{reps}] Enter gesture label: ").strip()
             print(f"  Collecting {window_size} samples for '{gesture}'…")
+
+            # clear any old serial data & give user time to get ready
+            ser.reset_input_buffer()
+            print("  Execute gesture in…")
+            for cnt in (3,2,1):
+                print(f"    {cnt}…")
+                time.sleep(1)
+            print("  Go!")
+
             window = []
             start = time.time()
 
@@ -44,9 +53,9 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--port",       default="COM3")
     p.add_argument("--baud", type=int, default=115200)
-    p.add_argument("--window", type=int, default=20, help="Number of accel samples per gesture window")
+    p.add_argument("--window", type=int, default=200, help="Number of accel samples per gesture window")
     p.add_argument("--rate",  type=float, default=100.0, help="Sampling rate in Hz")
-    p.add_argument("--reps",  type=int, default=50, help="How many windows to collect")
+    p.add_argument("--reps",  type=int, default=20, help="How many windows to collect")
     p.add_argument("--out",   default="gesture_data.csv")
     args = p.parse_args()
     collect_data(args.port, args.baud, args.window, args.rate, args.reps, args.out)
