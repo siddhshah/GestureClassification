@@ -16,8 +16,13 @@ def preprocess(input_path, output_path, filter_cutoff, sample_rate):
         labels = df.iloc[:, 0].values
         data = df.iloc[:, 1:].values.astype(float)
     elif input_path.lower().endswith('.npy'):
-        arr = np.load(input_path)
-        labels = arr[:, 0]
+        arr = np.load(input_path, allow_pickle=True)
+        raw_labels = arr[:, 0]
+        unique_labels = np.unique(raw_labels)
+        label_to_int = {label: i for i, label in enumerate(unique_labels)}
+        int_labels = np.array([label_to_int[label] for label in raw_labels], dtype=int)
+
+        labels = int_labels
         data = arr[:, 1:]
     else:
         raise ValueError("Unsupported file type (.csv and .npy only).")
