@@ -16,7 +16,7 @@ def collect_data(port, baudrate, window_size, sample_rate, reps, out_csv):
 
     with open(out_csv, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(header)
+        # writer.writerow(header) no header
 
         for rep in range(reps):
             gesture = input(f"[{rep+1}/{reps}] Enter gesture label: ").strip()

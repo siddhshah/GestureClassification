@@ -1,9 +1,5 @@
-# Data preprocessing: Load raw `.npy` files, apply DC removal, filtering, and normalization
-# Save processed arrays for training
-
 import argparse
 import os
-
 import numpy as np
 import pandas as pd
 from scipy.signal import firwin, filtfilt
@@ -13,17 +9,18 @@ def preprocess(input_path, output_path, filter_cutoff, sample_rate):
     # Load data
     if input_path.lower().endswith('.csv'):
         df = pd.read_csv(input_path)
-        labels = df.iloc[:, 0].values
-        data = df.iloc[:, 1:].values.astype(float)
+        df = df.apply(pd.to_numeric, errors='coerce')
+        df.dropna(inplace=True)
+        labels = df.iloc[:, 0].astype(int).values
+        data = df.iloc[:, 1:].astype(np.float32).values
     elif input_path.lower().endswith('.npy'):
         arr = np.load(input_path, allow_pickle=True)
         raw_labels = arr[:, 0]
         unique_labels = np.unique(raw_labels)
         label_to_int = {label: i for i, label in enumerate(unique_labels)}
-        int_labels = np.array([label_to_int[label] for label in raw_labels], dtype=int)
-
+        int_labels = np.array([label_to_int[label] for label in raw_labels], dtype=np.int32)
+        data = arr[:, 1:].astype(np.float32)
         labels = int_labels
-        data = arr[:, 1:]
     else:
         raise ValueError("Unsupported file type (.csv and .npy only).")
 
@@ -33,27 +30,22 @@ def preprocess(input_path, output_path, filter_cutoff, sample_rate):
     # Design FIR low-pass filter
     nyquist = 0.5 * sample_rate
     cutoff_norm = filter_cutoff / nyquist
-    numtaps = 31  # must be odd
+    numtaps = 31
     taps = firwin(numtaps, cutoff_norm)
 
     processed = np.zeros_like(data)
     for i in range(num_samples):
         w = data[i].reshape(window_size, 3)
-        # DC removal
-        w = w - w.mean(axis=0)
-        # Low-pass filter each axis
+        w = w - w.mean(axis=0)  # DC removal
         for axis in range(3):
-            w[:, axis] = filtfilt(taps, [1.0], w[:, axis])
-        # Normalize to max absolute 1
+            w[:, axis] = filtfilt(taps, [1.0], w[:, axis])  # filtering
         max_abs = np.max(np.abs(w))
         if max_abs > 0:
             w = w / max_abs
         processed[i] = w.flatten()
 
-    # Combine labels and processed features
-    out_arr = np.column_stack((labels, processed))
+    out_arr = np.column_stack((labels, processed.astype(np.float32)))
 
-    # Ensure output directory exists
     out_dir = os.path.dirname(output_path)
     if out_dir and not os.path.exists(out_dir):
         os.makedirs(out_dir)
